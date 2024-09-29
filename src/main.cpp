@@ -79,8 +79,63 @@ void DrawPaddle(Vector2 position, Color color)
     DrawRectangleRec(BoxToRec(paddleBox), color);
 }
 
+//countdown help from nick
+
+
+bool isCountdown = false;
+float countdownTime = 0;
+float counter;
+
+void StartCountdown() {
+    counter = 5;
+    isCountdown = true;
+    countdownTime = GetTime();
+}
+
+
+
+bool UpdateCountdown() {
+    if (isCountdown) {
+        float elapsedTime = GetTime() - countdownTime;
+        counter = 5 - static_cast<int>(elapsedTime);
+
+        if (counter <= 0) {
+            isCountdown = false;
+            return true;
+        }  
+    }
+    return false;
+}
+
+void DrawCountdown() {
+    if (isCountdown)
+        DrawText(TextFormat("%d", counter), CENTER.x, CENTER.y - 50, 120, WHITE);
+}
+
+void DisplayScore( int fontSize, int bluePoints, int redPoints) {
+    int centerText = SCREEN_WIDTH / 2;
+    DrawText(TextFormat("%d", bluePoints), centerText - 30, 10, fontSize, BLUE);
+    DrawText(TextFormat("%d", redPoints), centerText + 30, 10, fontSize, RED);
+}
+
+void DisplayWinner(int winner, Color color) {
+    int centerText = MeasureText("BLUE WINS! OWO", 100) / 2;
+    int centerScreenWIDTH = SCREEN_WIDTH / 2;
+    int centerScreenHEIGHT = SCREEN_HEIGHT / 2;
+    //blue won
+    if (winner == 1)
+        DrawText("BLUE WINS! OWO", centerScreenWIDTH - centerText, centerScreenWIDTH, 100, color);
+    //red won
+    if (winner == 2)
+        DrawText("RED WINS! UWU", centerScreenWIDTH - centerText, centerScreenWIDTH, 100, color);
+}
+
+
 int main()
 {
+    int redPoints = 0;
+    int bluePoints = 0;
+    const char count = 0;
     Vector2 ballPosition;
     Vector2 ballDirection;
     ResetBall(ballPosition, ballDirection);
@@ -97,6 +152,7 @@ int main()
         float dt = GetFrameTime();
         float ballDelta = BALL_SPEED * dt;
         float paddleDelta = PADDLE_SPEED * dt;
+
 
         // Move paddle with key input
         if (IsKeyDown(KEY_W))
@@ -117,21 +173,42 @@ int main()
         Box paddle1Box = PaddleBox(paddle1Position);
         Box paddle2Box = PaddleBox(paddle2Position);
 
-        if (ballBox.xMin < 0.0f || ballBox.xMax > SCREEN_WIDTH)
+        if (ballBox.xMax > SCREEN_WIDTH) {
+            //score point     
+            bluePoints++;
             ballDirection.x *= -1.0f;
+        }
+        if (ballBox.xMin < 0.0f) {
+            redPoints++;
+            ballDirection.x *= -1.0f;      
+        }
+        if (bluePoints == 5 || redPoints == 5) {
+            ResetBall(ballPosition, ballDirection);
+            if (redPoints > bluePoints)
+                DisplayWinner(2, RED);
+            else
+                DisplayWinner(1, BLUE);
+
+        }
+
         if (ballBox.yMin < 0.0f || ballBox.yMax > SCREEN_HEIGHT)
             ballDirection.y *= -1.0f;
         if (BoxOverlap(ballBox, paddle1Box) || BoxOverlap(ballBox, paddle2Box))
             ballDirection.x *= -1.0f;
 
         // Update ball position after collision resolution, then render
-        ballPosition = ballPosition + ballDirection * ballDelta;
-
+        if (UpdateCountdown())           
+         ballPosition = ballPosition + ballDirection * ballDelta;
+        
+            
+        StartCountdown();
         BeginDrawing();
         ClearBackground(BLACK);
+        DisplayScore( 80, bluePoints, redPoints);
         DrawBall(ballPosition, WHITE);
-        DrawPaddle(paddle1Position, WHITE);
-        DrawPaddle(paddle2Position, WHITE);
+        DrawCountdown();
+        DrawPaddle(paddle1Position, BLUE);
+        DrawPaddle(paddle2Position, RED);
         EndDrawing();
     }
 
