@@ -81,38 +81,20 @@ void DrawPaddle(Vector2 position, Color color)
 
 //countdown help from nick
 
+bool isCountdown;
+float countdownStartTime;
+int counter = 5;
+int redPoints = 4;
+int bluePoints = 0;
+bool isGameOver;
+bool isStartCD;
+int countDownTime;
 
-bool isCountdown = false;
-float countdownTime = 0;
-float counter;
-
-void StartCountdown() {
-    counter = 5;
-    isCountdown = true;
-    countdownTime = GetTime();
+void ResetScore() {
+    redPoints = 0;
+    bluePoints = 0;
 }
-
-
-
-bool UpdateCountdown() {
-    if (isCountdown) {
-        float elapsedTime = GetTime() - countdownTime;
-        counter = 5 - static_cast<int>(elapsedTime);
-
-        if (counter <= 0) {
-            isCountdown = false;
-            return true;
-        }  
-    }
-    return false;
-}
-
-void DrawCountdown() {
-    if (isCountdown)
-        DrawText(TextFormat("%d", counter), CENTER.x, CENTER.y - 50, 120, WHITE);
-}
-
-void DisplayScore( int fontSize, int bluePoints, int redPoints) {
+void DisplayScore(int fontSize, int bluePoints, int redPoints) {
     int centerText = SCREEN_WIDTH / 2;
     DrawText(TextFormat("%d", bluePoints), centerText - 30, 10, fontSize, BLUE);
     DrawText(TextFormat("%d", redPoints), centerText + 30, 10, fontSize, RED);
@@ -122,20 +104,72 @@ void DisplayWinner(int winner, Color color) {
     int centerText = MeasureText("BLUE WINS! OWO", 100) / 2;
     int centerScreenWIDTH = SCREEN_WIDTH / 2;
     int centerScreenHEIGHT = SCREEN_HEIGHT / 2;
-    //blue won
-    if (winner == 1)
-        DrawText("BLUE WINS! OWO", centerScreenWIDTH - centerText, centerScreenWIDTH, 100, color);
-    //red won
-    if (winner == 2)
-        DrawText("RED WINS! UWU", centerScreenWIDTH - centerText, centerScreenWIDTH, 100, color);
+    if (isGameOver) {
+        //blue won
+        if (winner == 1)
+            DrawText("BLUE WINS! OWO", centerScreenWIDTH - centerText, centerScreenWIDTH, 100, color);
+        //red won
+        if (winner == 2)
+            DrawText("RED WINS! UWU", centerScreenWIDTH - centerText, centerScreenWIDTH, 100, color);
+    }
 }
 
+void StartCountdown() {
+    countdownStartTime = GetTime();
+    isCountdown = true;
+    isStartCD = false;
+}
+
+bool UpdateCountdown() {
+    if (isCountdown) {
+        float elapsedTime = GetTime() - countdownStartTime;
+        counter = countDownTime - static_cast<int>(elapsedTime);
+
+        if (counter <= 0) {
+            
+            //reset scores
+            if (isGameOver)
+                ResetScore();
+            // turn off coundown, turn off gameover, turn back on countdownstarter
+            isCountdown = false;
+            isGameOver = false;
+            isStartCD = true;
+
+            return true;
+        }  
+        
+    }
+    return false;
+}
+
+void DrawCountdown() {
+    if (isCountdown)
+        DrawText(TextFormat("%d", counter), CENTER.x, CENTER.y - 50, 120, WHITE);
+}
+
+void ResetGame() {
+    
+    if (isStartCD)
+     StartCountdown();
+    countDownTime = 5;
+    if (isGameOver) {
+        if (redPoints > bluePoints)
+            DisplayWinner(2, RED);
+        else
+            DisplayWinner(1, BLUE);
+    }
+}
+
+void ResetRound() {
+    // shorter cooldown, set it to oppisite side of point?
+    countDownTime = 2;
+    if (isStartCD)
+        StartCountdown();
+    
+}
 
 int main()
 {
-    int redPoints = 0;
-    int bluePoints = 0;
-    const char count = 0;
     Vector2 ballPosition;
     Vector2 ballDirection;
     ResetBall(ballPosition, ballDirection);
@@ -144,15 +178,17 @@ int main()
     paddle1Position.x = SCREEN_WIDTH * 0.05f;
     paddle2Position.x = SCREEN_WIDTH * 0.95f;
     paddle1Position.y = paddle2Position.y = CENTER.y;
-
+    
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Pong");
     SetTargetFPS(60);
+    StartCountdown();
+    countDownTime = 5;
+    
     while (!WindowShouldClose())
     {
         float dt = GetFrameTime();
         float ballDelta = BALL_SPEED * dt;
         float paddleDelta = PADDLE_SPEED * dt;
-
 
         // Move paddle with key input
         if (IsKeyDown(KEY_W))
@@ -176,20 +212,22 @@ int main()
         if (ballBox.xMax > SCREEN_WIDTH) {
             //score point     
             bluePoints++;
+            ResetBall(ballPosition, ballDirection);
+            ResetRound();
             ballDirection.x *= -1.0f;
         }
         if (ballBox.xMin < 0.0f) {
             redPoints++;
+            ResetBall(ballPosition, ballDirection);
+            ResetRound();
             ballDirection.x *= -1.0f;      
         }
-        if (bluePoints == 5 || redPoints == 5) {
+        if (bluePoints == 5 || redPoints == 5) {      
+            isGameOver = true;
             ResetBall(ballPosition, ballDirection);
-            if (redPoints > bluePoints)
-                DisplayWinner(2, RED);
-            else
-                DisplayWinner(1, BLUE);
-
+            ResetGame();           
         }
+        
 
         if (ballBox.yMin < 0.0f || ballBox.yMax > SCREEN_HEIGHT)
             ballDirection.y *= -1.0f;
@@ -197,16 +235,17 @@ int main()
             ballDirection.x *= -1.0f;
 
         // Update ball position after collision resolution, then render
-        if (UpdateCountdown())           
-         ballPosition = ballPosition + ballDirection * ballDelta;
+        if (isCountdown)
+            DrawCountdown();
+        else {
+           ballPosition = ballPosition + ballDirection * ballDelta;
+        }           
         
-            
-        StartCountdown();
         BeginDrawing();
         ClearBackground(BLACK);
-        DisplayScore( 80, bluePoints, redPoints);
-        DrawBall(ballPosition, WHITE);
-        DrawCountdown();
+        DisplayScore( 80, bluePoints, redPoints); 
+        UpdateCountdown();
+        DrawBall(ballPosition, WHITE);        
         DrawPaddle(paddle1Position, BLUE);
         DrawPaddle(paddle2Position, RED);
         EndDrawing();
