@@ -22,7 +22,16 @@ struct Box
     float yMax;
 };
 
-bool BoxOverlap(Box box1, Box box2)
+struct Circle
+{
+    float xMin;
+    float xMax;
+    float yMin;
+    float yMax;
+    float radius;
+};
+
+bool BoxOverlap(Circle box1, Box box2)
 {
     bool x = box1.xMax >= box2.xMin && box1.xMin <= box2.xMax;
     bool y = box1.yMax >= box2.yMin && box1.yMin <= box2.yMax;
@@ -39,14 +48,15 @@ Rectangle BoxToRec(Box box)
     return rec;
 }
 
-Box BallBox(Vector2 position)
+Circle BallBox(Vector2 position)
 {
-    Box box;
-    box.xMin = position.x - BALL_SIZE * 0.5f;
-    box.xMax = position.x + BALL_SIZE * 0.5f;
-    box.yMin = position.y - BALL_SIZE * 0.5f;
-    box.yMax = position.y + BALL_SIZE * 0.5f;
-    return box;
+    Circle ball;
+    ball.xMin = position.x - BALL_SIZE * 0.5f;
+    ball.xMax = position.x + BALL_SIZE * 0.5f;
+    ball.yMin = position.y - BALL_SIZE * 0.5f;
+    ball.yMax = position.y + BALL_SIZE * 0.5f;
+    ball.radius = BALL_SIZE;
+    return ball;
 }
 
 Box PaddleBox(Vector2 position)
@@ -66,11 +76,14 @@ void ResetBall(Vector2& position, Vector2& direction)
     direction.y = 0.0f;
     direction = Rotate(direction, Random(0.0f, 360.0f) * DEG2RAD);
 }
+void ChangeDirection(Vector2& direction) {
+    direction = Rotate(direction, Random(direction.x - 45, direction.x + 45) * DEG2RAD);
+}
 
 void DrawBall(Vector2 position, Color color)
 {
-    Box ballBox = BallBox(position);
-    DrawRectangleRec(BoxToRec(ballBox), color);
+    Circle ballBox = BallBox(position);
+    DrawCircleLines(position.x, position.y, ballBox.radius,color);
 }
 
 void DrawPaddle(Vector2 position, Color color)
@@ -83,12 +96,16 @@ void DrawPaddle(Vector2 position, Color color)
 
 bool isCountdown;
 float countdownStartTime;
+float colourCountdownStartTime;
 int counter = 5;
 int redPoints = 0;
 int bluePoints = 0;
 bool isGameOver;
 bool isStartCD;
 int countDownTime;
+float colourCounter;
+bool isColourChanging = true;
+bool isColourStartCD = true;
 
 void ResetScore() {
     redPoints = 0;
@@ -101,9 +118,9 @@ void DisplayScore(int fontSize, int bluePoints, int redPoints) {
 }
 
 void DisplayWinner(int winner, Color color) {
-    int centerText = MeasureText("BLUE WINS! OWO", 100) / 2;
-    int centerScreenWIDTH = SCREEN_WIDTH / 2;
-    int centerScreenHEIGHT = SCREEN_HEIGHT / 2;
+    float centerText = MeasureText("BLUE WINS! OWO", 100) / 2;
+    float centerScreenWIDTH = SCREEN_WIDTH / 2;
+    float centerScreenHEIGHT = SCREEN_HEIGHT / 2;
     if (isGameOver) {
         //blue won
         if (winner == 1)
@@ -118,6 +135,13 @@ void StartCountdown() {
     countdownStartTime = GetTime();
     isCountdown = true;
     isStartCD = false;
+}
+
+void StartColourCountdown() {
+    isColourChanging = true;
+    colourCountdownStartTime = GetTime();
+    isColourStartCD = false;
+    
 }
 
 bool UpdateCountdown() {
@@ -139,12 +163,21 @@ bool UpdateCountdown() {
         }  
         
     }
+    if (isColourChanging) {
+        float elapsedTime = GetTime() - colourCountdownStartTime;
+        colourCounter = 0.005 - static_cast<int>(elapsedTime);
+        if (colourCounter <= 0) {
+            isColourChanging = false;
+            isColourStartCD = true;
+        }
+    }
+
     return false;
 }
 
 void DrawCountdown() {
     if (isCountdown)
-        DrawText(TextFormat("%d", counter), CENTER.x, CENTER.y - 50, 120, WHITE);
+        DrawText(TextFormat("%d", counter), CENTER.x - 10, CENTER.y, 120, WHITE);
 }
 
 void ResetGame() {
@@ -173,6 +206,10 @@ int main()
     Vector2 ballPosition;
     Vector2 ballDirection;
     ResetBall(ballPosition, ballDirection);
+    
+    //Added ball speed increased everytime the ball hits the paddle. This mechanic makes sure that the rounds get increasingly
+    //more difficult if the round is taking too long or is stale-mating.
+    float ballSpeedIncrease = 1;
 
     Vector2 paddle1Position, paddle2Position;
     paddle1Position.x = SCREEN_WIDTH * 0.05f;
@@ -182,13 +219,15 @@ int main()
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Pong");
     SetTargetFPS(60);
     StartCountdown();
+    StartColourCountdown();
     countDownTime = 5;
+    float hue = 0.0f;
     
     while (!WindowShouldClose())
     {
-        float speedIncrease = 1;
         float dt = GetFrameTime();
-        float ballDelta = BALL_SPEED * dt;
+        
+        float ballDelta = BALL_SPEED * ballSpeedIncrease * dt;
         float paddleDelta = PADDLE_SPEED * dt;
 
         // Move paddle with key input
@@ -205,8 +244,8 @@ int main()
         paddle2Position.y = Clamp(paddle2Position.y, phh, SCREEN_HEIGHT - phh);
 
         // Change the ball's direction on-collision
-        Vector2 ballPositionNext = ballPosition + ballDirection * speedIncrease;
-        Box ballBox = BallBox(ballPositionNext);
+        Vector2 ballPositionNext = ballPosition + ballDirection * ballDelta;
+        Circle ballBox = BallBox(ballPositionNext);
         Box paddle1Box = PaddleBox(paddle1Position);
         Box paddle2Box = PaddleBox(paddle2Position);
 
@@ -230,26 +269,37 @@ int main()
         }
         
 
-        if (ballBox.yMin < 0.0f || ballBox.yMax > SCREEN_HEIGHT)
+        if (ballBox.yMin < 0.0f || ballBox.yMax > SCREEN_HEIGHT) {
             ballDirection.y *= -1.0f;
-        if (BoxOverlap(ballBox, paddle1Box) || BoxOverlap(ballBox, paddle2Box)) {
-            speedIncrease = ballDelta * 1.5;
-            ballDirection.x *=  -1;
+            ChangeDirection(ballDirection);
         }
             
 
         // Update ball position after collision resolution, then render
-        if (isCountdown)
-            DrawCountdown();
-        else {
+        if (!isCountdown)
            ballPosition = ballPosition + ballDirection * ballDelta;
-        }           
+        
+        if (BoxOverlap(ballBox, paddle1Box) || BoxOverlap(ballBox, paddle2Box)) {
+            ballDirection.x *= -1;
+            ballSpeedIncrease += 0.05;
+            ChangeDirection(ballDirection);
+        }
         
         BeginDrawing();
+
+        hue += 1;
+        if (hue > 360.0f) hue -= 360.0f;
+
+
+        Color rainbowColor = ColorFromHSV(hue, 1.0f, 1.0f);
+
+
         ClearBackground(BLACK);
         DisplayScore( 80, bluePoints, redPoints); 
+        
+        DrawBall(ballPosition, rainbowColor);  
+        DrawCountdown();
         UpdateCountdown();
-        DrawBall(ballPosition, WHITE);        
         DrawPaddle(paddle1Position, BLUE);
         DrawPaddle(paddle2Position, RED);
         EndDrawing();
