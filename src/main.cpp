@@ -84,7 +84,7 @@ void DrawPaddle(Vector2 position, Color color)
 bool isCountdown;
 float countdownStartTime;
 int counter = 5;
-int redPoints = 4;
+int redPoints = 0;
 int bluePoints = 0;
 bool isGameOver;
 bool isStartCD;
@@ -186,6 +186,7 @@ int main()
     
     while (!WindowShouldClose())
     {
+        float speedIncrease = 1;
         float dt = GetFrameTime();
         float ballDelta = BALL_SPEED * dt;
         float paddleDelta = PADDLE_SPEED * dt;
@@ -204,7 +205,7 @@ int main()
         paddle2Position.y = Clamp(paddle2Position.y, phh, SCREEN_HEIGHT - phh);
 
         // Change the ball's direction on-collision
-        Vector2 ballPositionNext = ballPosition + ballDirection * ballDelta;
+        Vector2 ballPositionNext = ballPosition + ballDirection * speedIncrease;
         Box ballBox = BallBox(ballPositionNext);
         Box paddle1Box = PaddleBox(paddle1Position);
         Box paddle2Box = PaddleBox(paddle2Position);
@@ -231,8 +232,11 @@ int main()
 
         if (ballBox.yMin < 0.0f || ballBox.yMax > SCREEN_HEIGHT)
             ballDirection.y *= -1.0f;
-        if (BoxOverlap(ballBox, paddle1Box) || BoxOverlap(ballBox, paddle2Box))
-            ballDirection.x *= -1.0f;
+        if (BoxOverlap(ballBox, paddle1Box) || BoxOverlap(ballBox, paddle2Box)) {
+            speedIncrease = ballDelta * 1.5;
+            ballDirection.x *=  -1;
+        }
+            
 
         // Update ball position after collision resolution, then render
         if (isCountdown)
