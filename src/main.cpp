@@ -7,12 +7,18 @@ constexpr Vector2 CENTER{ SCREEN_WIDTH * 0.5f, SCREEN_HEIGHT * 0.5f };
 
 // Ball can move half the screen width per-second
 constexpr float BALL_SPEED = SCREEN_WIDTH * 0.5f;
-constexpr float BALL_SIZE = 40.0f;
+constexpr float BALL_SIZE = 60.0f;
 
 // Paddles can move half the screen height per-second
 constexpr float PADDLE_SPEED = SCREEN_HEIGHT * 0.5f;
 constexpr float PADDLE_WIDTH = 40.0f;
 constexpr float PADDLE_HEIGHT = 80.0f;
+
+float ballSpeedIncrease = 1;
+
+Texture2D Ball;
+Texture2D FastBall;
+Texture2D BackgroundImg;
 
 struct Box
 {
@@ -55,10 +61,29 @@ Circle BallBox(Vector2 position)
     ball.xMax = position.x + BALL_SIZE * 0.5f;
     ball.yMin = position.y - BALL_SIZE * 0.5f;
     ball.yMax = position.y + BALL_SIZE * 0.5f;
-    ball.radius = BALL_SIZE;
+    ball.radius = BALL_SIZE *0.5;
+    return ball;
+}
+Circle BallBox(Vector2 position, float size)
+{
+    Circle ball;
+    ball.xMin = position.x - BALL_SIZE * 0.5f;
+    ball.xMax = position.x + BALL_SIZE * 0.5f;
+    ball.yMin = position.y - BALL_SIZE * 0.5f;
+    ball.yMax = position.y + BALL_SIZE * 0.5f;
+    ball.radius = BALL_SIZE* size * 0.5;
     return ball;
 }
 
+Box PaddleBox(Vector2 position, float size)
+{
+    Box box;
+    box.xMin = position.x - PADDLE_WIDTH * size * 0.5f;
+    box.xMax = position.x + PADDLE_WIDTH * size * 0.5f;
+    box.yMin = position.y - PADDLE_HEIGHT* size * 0.5f;
+    box.yMax = position.y + PADDLE_HEIGHT* size * 0.5f;
+    return box;
+}
 Box PaddleBox(Vector2 position)
 {
     Box box;
@@ -75,20 +100,28 @@ void ResetBall(Vector2& position, Vector2& direction)
     direction.x = rand() % 2 == 0 ? -1.0f : 1.0f;
     direction.y = 0.0f;
     direction = Rotate(direction, Random(0.0f, 360.0f) * DEG2RAD);
+    ballSpeedIncrease = 1;
 }
 void ChangeDirection(Vector2& direction) {
     direction = Rotate(direction, Random(direction.x - 45, direction.x + 45) * DEG2RAD);
 }
 
-void DrawBall(Vector2 position, Color color)
+void DrawBall(Vector2 position, Color color, Texture2D ballTexture)
 {
     Circle ballBox = BallBox(position);
-    DrawCircleLines(position.x, position.y, ballBox.radius,color);
+    Circle ballBoxOutline = BallBox(position,1.3);
+    DrawCircle(position.x, position.y, ballBoxOutline.radius, BLACK);
+    DrawCircle(position.x, position.y, ballBox.radius, color);
+    //DrawRectangle(position.x - BALL_SIZE * 0.5f, position.y - BALL_SIZE * 0.5f, BALL_SIZE, BALL_SIZE, PINK);
+    DrawTextureEx(ballTexture, { position.x - BALL_SIZE*0.5f, position.y - BALL_SIZE * 0.5f }, 0, BALL_SIZE / ballTexture.width, WHITE);
 }
 
 void DrawPaddle(Vector2 position, Color color)
 {
-    Box paddleBox = PaddleBox(position);
+    Box paddleBox = PaddleBox(position,1);
+    Box paddleBoxOutline = PaddleBox(position,1.2);
+
+    DrawRectangleRec(BoxToRec(paddleBoxOutline), BLACK);
     DrawRectangleRec(BoxToRec(paddleBox), color);
 }
 
@@ -115,6 +148,9 @@ void DisplayScore(int fontSize, int bluePoints, int redPoints) {
     int centerText = SCREEN_WIDTH / 2;
     DrawText(TextFormat("%d", bluePoints), centerText - 30, 10, fontSize, BLUE);
     DrawText(TextFormat("%d", redPoints), centerText + 30, 10, fontSize, RED);
+}
+void DisplayText() {
+    DrawText(TextFormat("%f", ballSpeedIncrease), 10, 10, 80, RED);
 }
 
 void DisplayWinner(int winner, Color color) {
@@ -201,6 +237,8 @@ void ResetRound() {
     
 }
 
+
+
 int main()
 {
     Vector2 ballPosition;
@@ -209,7 +247,7 @@ int main()
     
     //Added ball speed increased everytime the ball hits the paddle. This mechanic makes sure that the rounds get increasingly
     //more difficult if the round is taking too long or is stale-mating.
-    float ballSpeedIncrease = 1;
+   
 
     Vector2 paddle1Position, paddle2Position;
     paddle1Position.x = SCREEN_WIDTH * 0.05f;
@@ -217,11 +255,16 @@ int main()
     paddle1Position.y = paddle2Position.y = CENTER.y;
     
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Pong");
+
+    Ball = LoadTexture("Assets/HappyBall.png");
+    FastBall = LoadTexture("Assets/FastBall.png");
+    BackgroundImg = LoadTexture("Assets/fatking.png");
+
     SetTargetFPS(60);
     StartCountdown();
     StartColourCountdown();
     countDownTime = 5;
-    float hue = 0.0f;
+    float hue = 0.0f;float hueball = 180.0f;
     
     while (!WindowShouldClose())
     {
@@ -289,22 +332,31 @@ int main()
 
         hue += 1;
         if (hue > 360.0f) hue -= 360.0f;
+        hueball += 1;
+        if (hueball > 360.0f) hueball -= 360.0f;
 
 
         Color rainbowColor = ColorFromHSV(hue, 1.0f, 1.0f);
+        Color rainbowColorBall = ColorFromHSV(hueball, 1.0f, 1.0f);
 
-
-        ClearBackground(BLACK);
-        DisplayScore( 80, bluePoints, redPoints); 
         
-        DrawBall(ballPosition, rainbowColor);  
+        ClearBackground(BLACK);
+        DrawTexture(BackgroundImg, 0, 0, rainbowColorBall);
+        DisplayScore( 80, bluePoints, redPoints); 
+
+        if (ballSpeedIncrease > 1.4f)
+        DrawBall(ballPosition, rainbowColor, FastBall);  
+        else
+        DrawBall(ballPosition, rainbowColor, Ball);  
         DrawCountdown();
         UpdateCountdown();
         DrawPaddle(paddle1Position, BLUE);
         DrawPaddle(paddle2Position, RED);
         EndDrawing();
     }
-
+    UnloadTexture(Ball);
+    UnloadTexture(FastBall);
+    UnloadTexture(BackgroundImg);
     CloseWindow();
     return 0;
 }

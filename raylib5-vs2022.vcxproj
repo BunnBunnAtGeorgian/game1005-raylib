@@ -12,11 +12,14 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\main.cpp" />
-    <ClCompile Include="UI.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Math.h" />
-    <ClInclude Include="UI.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="Assets\FastBall.png" />
+    <Image Include="Assets\fatking.png" />
+    <Image Include="Assets\HappyBall.png" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
