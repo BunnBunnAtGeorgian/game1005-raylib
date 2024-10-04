@@ -35,4 +35,8 @@
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>
+  <ItemGroup>
+    <Media Include="Assets\BigPoppa.mp3" />
+    <Media Include="Assets\owa.mp3" />
+  </ItemGroup>
 </Project>

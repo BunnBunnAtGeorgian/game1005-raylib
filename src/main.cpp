@@ -1,6 +1,5 @@
 #include "raylib.h"
 #include "Math.h"
-
 constexpr float SCREEN_WIDTH = 1200.0f;
 constexpr float SCREEN_HEIGHT = 800.0f;
 constexpr Vector2 CENTER{ SCREEN_WIDTH * 0.5f, SCREEN_HEIGHT * 0.5f };
@@ -20,6 +19,7 @@ Texture2D Ball;
 Texture2D FastBall;
 Texture2D BackgroundImg;
 
+
 struct Box
 {
     float xMin;
@@ -28,6 +28,7 @@ struct Box
     float yMax;
 };
 
+//add circle because balls are round
 struct Circle
 {
     float xMin;
@@ -36,14 +37,6 @@ struct Circle
     float yMax;
     float radius;
 };
-
-bool BoxOverlap(Circle box1, Box box2)
-{
-    bool x = box1.xMax >= box2.xMin && box1.xMin <= box2.xMax;
-    bool y = box1.yMax >= box2.yMin && box1.yMin <= box2.yMax;
-    return x && y;
-}
-
 Rectangle BoxToRec(Box box)
 {
     Rectangle rec;
@@ -61,7 +54,7 @@ Circle BallBox(Vector2 position)
     ball.xMax = position.x + BALL_SIZE * 0.5f;
     ball.yMin = position.y - BALL_SIZE * 0.5f;
     ball.yMax = position.y + BALL_SIZE * 0.5f;
-    ball.radius = BALL_SIZE *0.5;
+    ball.radius = BALL_SIZE * 0.5;
     return ball;
 }
 Circle BallBox(Vector2 position, float size)
@@ -71,7 +64,7 @@ Circle BallBox(Vector2 position, float size)
     ball.xMax = position.x + BALL_SIZE * 0.5f;
     ball.yMin = position.y - BALL_SIZE * 0.5f;
     ball.yMax = position.y + BALL_SIZE * 0.5f;
-    ball.radius = BALL_SIZE* size * 0.5;
+    ball.radius = BALL_SIZE * size * 0.5;
     return ball;
 }
 
@@ -80,10 +73,10 @@ Box PaddleBox(Vector2 position, float size)
     Box box;
     box.xMin = position.x - PADDLE_WIDTH * size * 0.5f;
     box.xMax = position.x + PADDLE_WIDTH * size * 0.5f;
-    box.yMin = position.y - PADDLE_HEIGHT* size * 0.5f;
-    box.yMax = position.y + PADDLE_HEIGHT* size * 0.5f;
+    box.yMin = position.y - PADDLE_HEIGHT * size * 0.5f;
+    box.yMax = position.y + PADDLE_HEIGHT * size * 0.5f;
     return box;
-}
+};
 Box PaddleBox(Vector2 position)
 {
     Box box;
@@ -93,6 +86,15 @@ Box PaddleBox(Vector2 position)
     box.yMax = position.y + PADDLE_HEIGHT * 0.5f;
     return box;
 }
+
+bool BoxOverlap(Circle box1, Box box2)
+{
+    bool x = box1.xMax >= box2.xMin && box1.xMin <= box2.xMax;
+    bool y = box1.yMax >= box2.yMin && box1.yMin <= box2.yMax;
+    return x && y;
+}
+
+
 
 void ResetBall(Vector2& position, Vector2& direction)
 {
@@ -237,8 +239,6 @@ void ResetRound() {
     
 }
 
-
-
 int main()
 {
     Vector2 ballPosition;
@@ -256,9 +256,19 @@ int main()
     
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Pong");
 
+    //Load textures
     Ball = LoadTexture("Assets/HappyBall.png");
     FastBall = LoadTexture("Assets/FastBall.png");
     BackgroundImg = LoadTexture("Assets/fatking.png");
+
+    //load music
+    InitAudioDevice();
+
+    Music backgroundMusic = LoadMusicStream("Assets/BigPoppa.mp3");
+    Sound OnHit = LoadSound("Assets/owa.mp3");
+    PlayMusicStream(backgroundMusic);
+    SetMusicVolume(backgroundMusic, 0.2f);
+    SetSoundVolume(OnHit, 0.3);
 
     SetTargetFPS(60);
     StartCountdown();
@@ -272,7 +282,7 @@ int main()
         
         float ballDelta = BALL_SPEED * ballSpeedIncrease * dt;
         float paddleDelta = PADDLE_SPEED * dt;
-
+        UpdateMusicStream(backgroundMusic);
         // Move paddle with key input
         if (IsKeyDown(KEY_W))
             paddle1Position.y -= paddleDelta;
@@ -357,6 +367,11 @@ int main()
     UnloadTexture(Ball);
     UnloadTexture(FastBall);
     UnloadTexture(BackgroundImg);
+
+    //unload audio
+    UnloadMusicStream(backgroundMusic);
+    UnloadSound(OnHit);
+    CloseAudioDevice();
     CloseWindow();
     return 0;
 }
