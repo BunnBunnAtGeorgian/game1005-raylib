@@ -23,7 +23,9 @@
   </ItemGroup>
   <ItemGroup>
     <Media Include="Assets\BigPoppa.mp3" />
+    <Media Include="Assets\gameOver.mp3" />
     <Media Include="Assets\owa.mp3" />
+    <Media Include="Assets\score.mp3" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>

@@ -104,6 +104,10 @@ void ResetBall(Vector2& position, Vector2& direction)
     direction = Rotate(direction, Random(0.0f, 360.0f) * DEG2RAD);
     ballSpeedIncrease = 1;
 }
+
+//random direction everytime it hits the wall or paddle so its silly fun and unpredicable pong.
+//Makes the game unpredictable.
+
 void ChangeDirection(Vector2& direction) {
     direction = Rotate(direction, Random(direction.x - 45, direction.x + 45) * DEG2RAD);
 }
@@ -127,25 +131,22 @@ void DrawPaddle(Vector2 position, Color color)
     DrawRectangleRec(BoxToRec(paddleBox), color);
 }
 
+
 //countdown help from nick
 
 bool isCountdown;
 float countdownStartTime;
-float colourCountdownStartTime;
 int counter = 5;
 int redPoints = 0;
 int bluePoints = 0;
 bool isGameOver;
 bool isStartCD;
 int countDownTime;
-float colourCounter;
-bool isColourChanging = true;
-bool isColourStartCD = true;
-
 void ResetScore() {
     redPoints = 0;
     bluePoints = 0;
 }
+
 void DisplayScore(int fontSize, int bluePoints, int redPoints) {
     int centerText = SCREEN_WIDTH / 2;
     DrawText(TextFormat("%d", bluePoints), centerText - 30, 10, fontSize, BLUE);
@@ -175,13 +176,6 @@ void StartCountdown() {
     isStartCD = false;
 }
 
-void StartColourCountdown() {
-    isColourChanging = true;
-    colourCountdownStartTime = GetTime();
-    isColourStartCD = false;
-    
-}
-
 bool UpdateCountdown() {
     if (isCountdown) {
         float elapsedTime = GetTime() - countdownStartTime;
@@ -201,14 +195,6 @@ bool UpdateCountdown() {
         }  
         
     }
-    if (isColourChanging) {
-        float elapsedTime = GetTime() - colourCountdownStartTime;
-        colourCounter = 0.005 - static_cast<int>(elapsedTime);
-        if (colourCounter <= 0) {
-            isColourChanging = false;
-            isColourStartCD = true;
-        }
-    }
 
     return false;
 }
@@ -218,6 +204,7 @@ void DrawCountdown() {
         DrawText(TextFormat("%d", counter), CENTER.x - 10, CENTER.y, 120, WHITE);
 }
 
+//Reset Functions
 void ResetGame() {
     
     if (isStartCD)
@@ -230,13 +217,38 @@ void ResetGame() {
             DisplayWinner(1, BLUE);
     }
 }
-
 void ResetRound() {
     // shorter cooldown, set it to oppisite side of point?
     countDownTime = 2;
     if (isStartCD)
         StartCountdown();
     
+}
+
+//Sounds
+Music backgroundMusic;
+Sound onHit;
+Sound gameOver;
+Sound scored;
+void LoadMySounds() {
+    InitAudioDevice();
+
+    backgroundMusic = LoadMusicStream("Assets/BigPoppa.mp3");
+    onHit = LoadSound("Assets/owa.mp3");
+    gameOver = LoadSound("Assets/gameOver.mp3");
+    scored = LoadSound("Assets/score.mp3");
+    PlayMusicStream(backgroundMusic);
+    SetMusicVolume(backgroundMusic, 0.2f);
+    SetSoundVolume(onHit, 0.3);
+}
+void UnloadMySounds() {
+    //unload audio
+    UnloadMusicStream(backgroundMusic);
+    UnloadSound(onHit);
+    UnloadSound(gameOver);
+    UnloadSound(scored);
+    
+    CloseAudioDevice();
 }
 
 int main()
@@ -262,17 +274,10 @@ int main()
     BackgroundImg = LoadTexture("Assets/fatking.png");
 
     //load music
-    InitAudioDevice();
-
-    Music backgroundMusic = LoadMusicStream("Assets/BigPoppa.mp3");
-    Sound OnHit = LoadSound("Assets/owa.mp3");
-    PlayMusicStream(backgroundMusic);
-    SetMusicVolume(backgroundMusic, 0.2f);
-    SetSoundVolume(OnHit, 0.3);
+    LoadMySounds();
 
     SetTargetFPS(60);
     StartCountdown();
-    StartColourCountdown();
     countDownTime = 5;
     float hue = 0.0f;float hueball = 180.0f;
     
@@ -301,27 +306,32 @@ int main()
         Circle ballBox = BallBox(ballPositionNext);
         Box paddle1Box = PaddleBox(paddle1Position);
         Box paddle2Box = PaddleBox(paddle2Position);
-
+        // if they score
         if (ballBox.xMax > SCREEN_WIDTH) {
             //score point     
             bluePoints++;
             ResetBall(ballPosition, ballDirection);
             ResetRound();
             ballDirection.x *= -1.0f;
-        }
+            PlaySound(scored);
+        }       
         if (ballBox.xMin < 0.0f) {
             redPoints++;
             ResetBall(ballPosition, ballDirection);
             ResetRound();
             ballDirection.x *= -1.0f;      
+            PlaySound(scored);
         }
-        if (bluePoints == 5 || redPoints == 5) {      
+        //if win condition
+        if (bluePoints == 5 || redPoints == 5) { 
+            PlaySound(gameOver);
             isGameOver = true;
             ResetBall(ballPosition, ballDirection);
-            ResetGame();           
+            ResetGame();    
+            
         }
         
-
+        //hits screen bottoms
         if (ballBox.yMin < 0.0f || ballBox.yMax > SCREEN_HEIGHT) {
             ballDirection.y *= -1.0f;
             ChangeDirection(ballDirection);
@@ -332,10 +342,12 @@ int main()
         if (!isCountdown)
            ballPosition = ballPosition + ballDirection * ballDelta;
         
+        //hit paddle
         if (BoxOverlap(ballBox, paddle1Box) || BoxOverlap(ballBox, paddle2Box)) {
             ballDirection.x *= -1;
             ballSpeedIncrease += 0.05;
             ChangeDirection(ballDirection);
+            PlaySound(onHit);
         }
         
         BeginDrawing();
@@ -367,11 +379,8 @@ int main()
     UnloadTexture(Ball);
     UnloadTexture(FastBall);
     UnloadTexture(BackgroundImg);
-
-    //unload audio
-    UnloadMusicStream(backgroundMusic);
-    UnloadSound(OnHit);
-    CloseAudioDevice();
+    
+    UnloadMySounds();
     CloseWindow();
     return 0;
 }
