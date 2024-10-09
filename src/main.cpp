@@ -327,8 +327,7 @@ int main()
             PlaySound(gameOver);
             isGameOver = true;
             ResetBall(ballPosition, ballDirection);
-            ResetGame();    
-            
+            ResetGame();        
         }
         
         //hits screen bottoms
