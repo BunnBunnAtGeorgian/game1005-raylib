@@ -8,6 +8,10 @@
 constexpr int SCREEN_SIZE = 800;
 constexpr int TILE_SIZE = 40;
 constexpr int TILE_COUNT = SCREEN_SIZE / TILE_SIZE;
+constexpr int BUTTON_POSX = 20;
+constexpr int BUTTON_POSY = 20;
+constexpr int BUTTON_WIDTH = 200;
+constexpr int BUTTON_HEIGHT = 80;
 
 constexpr float BULLET_RADIUS = 15.0f;
 constexpr float ENEMY_RADIUS = 25.0f;
@@ -17,6 +21,7 @@ enum TileType : int
     GRASS,
     DIRT,
     WAYPOINT,
+    TOWER,
     COUNT
 };
 
@@ -48,7 +53,7 @@ void DrawTile(int row, int col, Color color)
 void DrawTile(int row, int col, int tileType)
 {
     assert(tileType >= 0 && tileType < COUNT);
-    Color colours[COUNT]{ LIME, BEIGE, SKYBLUE };
+    Color colours[COUNT]{ LIME, BEIGE, SKYBLUE, Color{ 20, 120,60, 255 } };
     DrawTile(row, col, colours[tileType]);
 }
 
@@ -94,6 +99,59 @@ std::vector<Cell> FloodFill(Cell start, int tiles[TILE_COUNT][TILE_COUNT], TileT
 
     return result;
 }
+//gray button with next
+//green during play
+//turn to gray for next game
+//if lose turn blue for new game
+enum State : int {
+    BEGIN,
+    PLAY,
+    END
+};
+struct Game
+{
+    Rectangle button;
+    Color buttonColour;
+    int state;
+};
+//GAMESTATES
+void UpdateBegin(Game& game) {
+    // Add mouse-out vs mouse-over colour
+    Color buttonColorOut = ORANGE;
+    Color buttonColorIn = Color{ 205, 111, 0, 255 };
+    bool mouseOver = CheckCollisionPointRec(GetMousePosition(), game.button);
+    game.buttonColour = mouseOver ? buttonColorIn : buttonColorOut;
+    if (mouseOver && IsMouseButtonReleased(MOUSE_LEFT_BUTTON))
+        ++game.state %= 3;
+}
+void UpdatePlay(Game& game)
+{
+    // Replace this with actual win condition to transition from pong play to pong game over
+    if (CheckCollisionPointRec(GetMousePosition(), game.button) && IsMouseButtonReleased(MOUSE_LEFT_BUTTON))
+        ++game.state %= 3;
+}
+
+void UpdateEnd(Game& game)
+{
+    // Replace with a play again vs quit option?
+    if (CheckCollisionPointRec(GetMousePosition(), game.button) && IsMouseButtonReleased(MOUSE_LEFT_BUTTON))
+        ++game.state %= 3;
+}
+
+void DrawBegin(Game& game)
+{
+    DrawRectangleRec(game.button, game.buttonColour);
+}
+
+void DrawPlay(Game& game)
+{
+    DrawRectangleRec(game.button, Color{ 70, 128, 158, 255 });
+}
+
+void DrawEnd(Game& game)
+{
+    DrawRectangleRec(game.button, Color{ 50, 50, 50, 255 });
+}
 
 struct Bullet
 {
@@ -103,8 +161,34 @@ struct Bullet
     bool enabled = true;
 };
 
+struct Enemy
+{
+    Vector2 Position;
+    int health;
+    int speed;
+    int damage;
+};
+struct Tower
+{
+    int damage;
+    float range;
+    float dps;
+};
+Tower towers[];
+Enemy enemies[];
+
+void SpawnEnemy() {
+    
+}
 int main()
 {
+    Game game;
+    game.state = BEGIN;
+    game.button.x = BUTTON_POSX;
+    game.button.y = BUTTON_POSY;
+    game.button.width = BUTTON_WIDTH;
+    game.button.height = BUTTON_HEIGHT;
+    
     int tiles[TILE_COUNT][TILE_COUNT]
     {
     //col:0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19    row:
@@ -148,6 +232,27 @@ int main()
 
     while (!WindowShouldClose())
     {
+        //game state switch
+        if (IsKeyPressed(KEY_SPACE))
+        {
+            ++game.state %= 3;
+        }
+
+        switch (game.state)
+        {
+        case BEGIN:
+            UpdateBegin(game);
+            break;
+
+        case PLAY:
+            UpdatePlay(game);
+            break;
+
+        case END:
+            UpdateEnd(game);
+            break;
+        }
+
         float dt = GetFrameTime();
         Vector2 mouse = GetMousePosition();
         if (IsKeyDown(KEY_SPACE))
@@ -211,9 +316,25 @@ int main()
         {
             DrawCircleV(bullets[i].position, 15.0f, RED);
         }
+
+        switch (game.state)
+        {
+        case BEGIN:
+            DrawBegin(game);
+            break;
+
+        case PLAY:
+            DrawPlay(game);
+            break;
+
+        case END:
+            DrawEnd(game);
+            break;
+        }
+
         EndDrawing();
     }
-
+    // yuh
     CloseWindow();
     return 0;
 }

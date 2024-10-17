@@ -11,9 +11,11 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\Buttons.cpp" />
     <ClCompile Include="src\main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\Buttons.h" />
     <ClInclude Include="src\Math.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
