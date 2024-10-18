@@ -14,12 +14,16 @@ constexpr int BUTTON_POSY = 20;
 constexpr int BUTTON_WIDTH = 200;
 constexpr int BUTTON_HEIGHT = 80;
 
-constexpr float BULLET_RADIUS = 15.0f;
+constexpr float BULLET_RADIUS = 8.0f;
 constexpr float ENEMY_RADIUS = 20.0f;
 constexpr int ENEMY_TOTAL = 10;
 
 constexpr float SPAWN_INTERVALS = 1.0f;
+//
 
+
+// just to note that it spawns the enemys as long as there isnt 10 alive, so as they die, more enemies keep spawning
+// also this is a cool project very fun and good learning
 enum TileType : int
 {
     GRASS,
@@ -56,8 +60,8 @@ struct Enemy
 {
     Vector2 position;
     Vector2 direction;
-    int health;
-    int damage;
+    int health = 100;
+    int damage = 5;
     int currentWaypoint;
     bool enabled = true;
 };
@@ -65,15 +69,16 @@ struct Bullet
 {
     Vector2 position{};
     Vector2 direction{};
+    int damage = 10;
     float time = 0.0f;
     bool enabled = true;
 };
 struct Tower
 {
     Cell cell;
-    int damage = 5;
     float range = 200.0f;
-    float dps = 1.0f;
+    float dps = 0.4f;
+    float shootCurrent = 0.0f;
 };
 
 Vector2 TileCenter(Cell cell)
@@ -201,6 +206,7 @@ void UpdateEnemies(vector<Enemy>& enemies, const vector<Cell>& waypoints, float 
             enemy.currentWaypoint = nextWaypoint;         // Move to next waypoint
             nextWaypoint = (enemy.currentWaypoint + 1) % waypoints.size();
         }
+
         // if enemy reaches end
             enemies.erase(
                 remove_if(enemies.begin(), enemies.end(), [&](Enemy enemy)
@@ -210,6 +216,8 @@ void UpdateEnemies(vector<Enemy>& enemies, const vector<Cell>& waypoints, float 
                             // Return true if you WANT the element (enemy) to be erased!
                             return enemy.enabled;
                         }
+                        if (enemy.health <= 0)
+                            return true;
                         return !enemy.enabled;
                     }),
                 enemies.end());
@@ -255,12 +263,12 @@ const Enemy* InRange(const Tower tower, const vector<Enemy>& enemies) {
     }
     return nearestEnemy;
 }
-float shootCurrent = 0;
-void ShootBullets( const vector<Tower>& towers, float dt, vector<Bullet>& bullets, vector<Enemy>& enemies) {
-    for (const Tower& tower : towers) {
+
+void ShootBullets(vector<Tower>& towers, float dt, vector<Bullet>& bullets, vector<Enemy>& enemies) {
+    for (Tower& tower : towers) {
         // Shoot a bullet every 0.25 seconds if we're holding space
-        shootCurrent += dt;
-        if (shootCurrent > tower.dps)
+        tower.shootCurrent += dt;
+        if (tower.shootCurrent > tower.dps)
         {
             if (InRange(tower, enemies) != nullptr) {
                 Vector2 nearestEnemyPos = InRange(tower, enemies)->position;
@@ -268,12 +276,10 @@ void ShootBullets( const vector<Tower>& towers, float dt, vector<Bullet>& bullet
                 bullet.position = TileCenter(tower.cell);
                 bullet.direction = Normalize(nearestEnemyPos - bullet.position);
                 bullets.push_back(bullet);
-                shootCurrent = 0.0f;
+                tower.shootCurrent = 0.0f;
             }
-
         }
-    }
-      
+    }     
 }
 
 int main()
@@ -328,7 +334,7 @@ int main()
 
     vector<Enemy>enemies;
     
-    InitWindow(800, 800, "Bloons TD6");
+    InitWindow(800, 800, "Bloons TD7");
     SetTargetFPS(60);
 
     while (!WindowShouldClose())
@@ -342,38 +348,9 @@ int main()
                 Tower newTower = { SelectCell() };
                 towers.push_back(newTower);
             }
-                //  ++game.state %= 3;
         }
-
-        switch (game.state)
-        {
-        case BEGIN:
-            UpdateBegin(game);
-            break;
-
-        case PLAY:
-            UpdatePlay(game);
-            break;
-
-        case END:
-            UpdateEnd(game);
-            break;
-        }
-
         float dt = GetFrameTime();
-
-
-
-    //  if (CheckCollisionPointCircle(B, enemyPosition, 10.0f))
-    //  {
-    //      enemyPosition = B;
-    //      ++curr %= waypoints.size();
-    //      ++next %= waypoints.size();
-    //      // TODO -- Fix this (add an actual condition to check if the enemy has reached the end)
-    //  }
-        
-
-        // Bullet update
+      // Bullet update
       for (int i = 0; i < bullets.size(); i++)
       {
           Bullet& bullet = bullets[i];
@@ -383,6 +360,12 @@ int main()
               bool collision = CheckCollisionCircles(bullet.position, BULLET_RADIUS, enemy.position, ENEMY_RADIUS);
               bool expired = bullet.time >= 0.5f;
               bullet.enabled = !collision && !expired;
+              //damage if collision
+              if (collision) {
+                  printf;
+                  enemy.health = enemy.health - bullet.damage;
+                  bullet.enabled = false;
+              }
           }
       }
       
@@ -398,7 +381,7 @@ int main()
 
         if (enemies.size() < ENEMY_TOTAL && spawnTimer >= SPAWN_INTERVALS) {
             printf("enemy spawned");
-            Enemy newEnemy = { startPosition, {0,0},100,100 };
+            Enemy newEnemy = { startPosition, {0,0} };
             enemies.push_back(newEnemy);
             spawnTimer = 0.0f;
         }
@@ -422,7 +405,7 @@ int main()
         //draw bullets
         for (int i = 0; i < bullets.size(); i++)
         {
-            DrawCircleV(bullets[i].position, 15.0f, RED);
+            DrawCircleV(bullets[i].position, 15.0f, BLACK);
         }
         switch (game.state)
         {
